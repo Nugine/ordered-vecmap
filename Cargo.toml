@@ -2,7 +2,10 @@
 name = "ordered-vecmap"
 version = "0.0.1"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
+license = "MIT"
+description = "An ordered map based on vectors and binary search"
+repository = "https://github.com/Nugine/ordered-vecmap"
+readme = "README.md"
+documentation = "https://docs.rs/ordered-vecmap"
+categories = ["data-structures"]
+keywords = ["ordered", "map"]
