@@ -1,6 +1,6 @@
 [package]
 name = "ordered-vecmap"
-version = "0.0.1"
+version = "0.1.0-dev"
 edition = "2021"
 license = "MIT"
 description = "An ordered map based on vectors and binary search"
@@ -9,3 +9,6 @@ readme = "README.md"
 documentation = "https://docs.rs/ordered-vecmap"
 categories = ["data-structures"]
 keywords = ["ordered", "map"]
+
+[dev-dependencies]
+rand = "0.8.4"
