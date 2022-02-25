@@ -1,88 +1,58 @@
-#![deny(clippy::all, clippy::cargo)]
+#![deny(
+    clippy::all,
+    clippy::cargo,
+    clippy::indexing_slicing,
+    clippy::must_use_candidate
+)]
 
 mod iter;
 use self::iter::Iter;
 
 use std::borrow::Borrow;
 use std::cmp::Ordering;
-use std::marker::PhantomData;
 use std::mem;
-use std::mem::ManuallyDrop;
-use std::ptr;
-use std::ptr::NonNull;
-use std::slice;
 
-/// An ordered map based on vectors and binary search.
 pub struct OrderedVecMap<K, V> {
-    keys: NonNull<K>,
-    values: NonNull<V>,
-    length: usize,
-    capacity: usize,
-    _marker: PhantomData<(Vec<K>, Vec<V>)>,
+    keys: Vec<K>,
+    values: Vec<V>,
 }
 
-unsafe impl<K: Send, V: Send> Send for OrderedVecMap<K, V> {}
-unsafe impl<K: Sync, V: Sync> Sync for OrderedVecMap<K, V> {}
-
 impl<K, V> OrderedVecMap<K, V> {
-    unsafe fn compress(keys_vec: Vec<K>, values_vec: Vec<V>) -> Self {
-        let mut keys_vec = ManuallyDrop::new(keys_vec);
-        let mut values_vec = ManuallyDrop::new(values_vec);
-
-        let length = keys_vec.len();
-        let capacity = keys_vec.capacity();
-
-        let keys = NonNull::new_unchecked(keys_vec.as_mut_ptr());
-        let values = NonNull::new_unchecked(values_vec.as_mut_ptr());
-
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
-            keys,
-            values,
-            length,
-            capacity,
-            _marker: PhantomData,
+            keys: Vec::new(),
+            values: Vec::new(),
         }
     }
 
-    unsafe fn uncompress(&mut self) -> (Vec<K>, Vec<V>) {
-        let keys = self.keys.as_ptr();
-        let values = self.values.as_ptr();
-        let len = self.length;
-        let cap = self.capacity;
-        let keys_vec = Vec::from_raw_parts(keys, len, cap);
-        let values_vec = Vec::from_raw_parts(values, len, cap);
-        (keys_vec, values_vec)
-    }
-
-    pub fn new() -> Self {
-        unsafe { Self::compress(Vec::new(), Vec::new()) }
-    }
-
-    pub fn from_vec(mut vec: Vec<(K, V)>) -> Self
+    #[must_use]
+    pub fn from_vec(mut kv: Vec<(K, V)>) -> Self
     where
         K: Ord,
     {
-        vec.sort_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
-        vec.dedup_by(|lhs, rhs| lhs.0.eq(&rhs.0));
+        kv.sort_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+        kv.dedup_by(|x, first| x.0 == first.0);
 
-        let length = vec.len();
-        let mut keys_vec = Vec::with_capacity(length);
-        let mut values_vec = Vec::with_capacity(length);
+        let mut keys = Vec::with_capacity(kv.len());
+        let mut values = Vec::with_capacity(kv.len());
 
-        for (k, v) in vec {
-            keys_vec.push(k);
-            values_vec.push(v);
+        for (k, v) in kv {
+            keys.push(k);
+            values.push(v);
         }
 
-        unsafe { Self::compress(keys_vec, values_vec) }
+        Self { keys, values }
     }
 
+    #[must_use]
     pub fn keys_slice(&self) -> &[K] {
-        unsafe { slice::from_raw_parts(self.keys.as_ptr(), self.length) }
+        self.keys.as_slice()
     }
 
+    #[must_use]
     pub fn values_slice(&self) -> &[V] {
-        unsafe { slice::from_raw_parts(self.values.as_ptr(), self.length) }
+        self.values.as_slice()
     }
 
     fn search<Q>(&self, key: &Q) -> Result<usize, usize>
@@ -109,10 +79,9 @@ impl<K, V> OrderedVecMap<K, V> {
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        match self.search(key) {
-            Ok(index) => Some(unsafe { array_get(self.values, index) }),
-            Err(_) => None,
-        }
+        debug_assert_eq!(self.keys.len(), self.values.len());
+        let index = self.search(key).ok()?;
+        Some(unsafe { self.values.get_unchecked(index) })
     }
 
     pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V>
@@ -120,44 +89,9 @@ impl<K, V> OrderedVecMap<K, V> {
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        match self.search(key) {
-            Ok(index) => Some(unsafe { array_get_mut(self.values, index) }),
-            Err(_) => None,
-        }
-    }
-
-    unsafe fn mutate<R>(&mut self, f: impl FnOnce(&mut Vec<K>, &mut Vec<V>) -> R) -> R {
-        let (mut keys_vec, mut values_vec) = {
-            let empty = Self::new();
-            let vecs = self.uncompress();
-            ptr::write(self, empty);
-            vecs
-        };
-        let ans = f(&mut keys_vec, &mut values_vec);
-        let this = Self::compress(keys_vec, values_vec);
-        ptr::write(self, this);
-        ans
-    }
-
-    pub fn insert(&mut self, key: K, value: V) -> Option<V>
-    where
-        K: Ord,
-    {
-        match self.search(&key) {
-            Ok(index) => {
-                let v = unsafe { array_get_mut(self.values, index) };
-                Some(mem::replace(v, value))
-            }
-            Err(index) => {
-                unsafe {
-                    self.mutate(|ks, vs| {
-                        ks.insert(index, key);
-                        vs.insert(index, value);
-                    })
-                };
-                None
-            }
-        }
+        debug_assert!(self.keys.len() == self.values.len());
+        let index = self.search(key).ok()?;
+        Some(unsafe { self.values.get_unchecked_mut(index) })
     }
 
     pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
@@ -165,71 +99,75 @@ impl<K, V> OrderedVecMap<K, V> {
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        match self.search(key) {
-            Ok(index) => Some(unsafe {
-                self.mutate(|ks, vs| {
-                    ks.remove(index);
-                    vs.remove(index)
-                })
-            }),
-            Err(_) => None,
-        }
+        debug_assert_eq!(self.keys.len(), self.values.len());
+        let index = self.search(key).ok()?;
+        self.keys.remove(index);
+        Some(self.values.remove(index))
     }
 
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.keys.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.keys.is_empty()
+    }
+
+    #[must_use]
     pub fn iter(&self) -> Iter<'_, K, V> {
+        debug_assert_eq!(self.keys.len(), self.values.len());
         Iter::new(self)
     }
 
-    pub fn len(&self) -> usize {
-        self.length
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.length == 0
-    }
-
-    pub fn insert_max(&mut self, key: K, value: V) -> Option<V>
+    pub fn insert(&mut self, key: K, value: V) -> Option<V>
     where
         K: Ord,
     {
-        let order = match self.keys_slice() {
-            [] => Ordering::Greater,
-            [.., max_key] => key.cmp(max_key),
+        enum Position {
+            Equal(usize),
+            Insert(usize),
+            End,
+        }
+
+        debug_assert_eq!(self.keys.len(), self.values.len());
+
+        let order = match self.keys_slice().last() {
+            None => Ordering::Greater,
+            Some(max_key) => key.cmp(max_key),
         };
 
-        match order {
-            Ordering::Less => self.insert(key, value),
-            Ordering::Equal => {
-                let index = self.length.wrapping_sub(1);
-                let v = unsafe { array_get_mut(self.values, index) };
+        let pos = match order {
+            Ordering::Less => match self.search(&key) {
+                Ok(index) => Position::Equal(index),
+                Err(index) => Position::Insert(index),
+            },
+            Ordering::Equal => Position::Equal(self.keys.len().wrapping_sub(1)),
+            Ordering::Greater => Position::End,
+        };
+
+        if !matches!(pos, Position::Equal(_)) {
+            self.keys.reserve(1);
+            self.values.reserve(1);
+        }
+
+        match pos {
+            Position::Equal(index) => {
+                let v = unsafe { self.values.get_unchecked_mut(index) };
                 Some(mem::replace(v, value))
             }
-            Ordering::Greater => {
-                unsafe {
-                    self.mutate(|ks, vs| {
-                        ks.push(key);
-                        vs.push(value);
-                    });
-                }
+            Position::Insert(index) => {
+                self.keys.insert(index, key);
+                self.values.insert(index, value);
+                None
+            }
+            Position::End => {
+                self.keys.push(key);
+                self.values.push(value);
                 None
             }
         }
-    }
-}
-
-#[inline(always)]
-unsafe fn array_get<'a, T>(base: NonNull<T>, index: usize) -> &'a T {
-    &*base.as_ptr().add(index)
-}
-
-#[inline(always)]
-unsafe fn array_get_mut<'a, T>(base: NonNull<T>, index: usize) -> &'a mut T {
-    &mut *base.as_ptr().add(index)
-}
-
-impl<K, V> Drop for OrderedVecMap<K, V> {
-    fn drop(&mut self) {
-        unsafe { drop(self.uncompress()) }
     }
 }
 
@@ -245,7 +183,7 @@ impl<'a, K, V> IntoIterator for &'a OrderedVecMap<K, V> {
     type IntoIter = Iter<'a, K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.iter()
+        OrderedVecMap::iter(self)
     }
 }
 
@@ -345,7 +283,7 @@ mod tests {
         let mut map = OrderedVecMap::new();
 
         for x in 0..n {
-            let _ = map.insert_max(RandomOrder(x), x);
+            let _ = map.insert(RandomOrder(x), x);
         }
 
         // dbg!(map.len());
