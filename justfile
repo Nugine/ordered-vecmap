@@ -6,3 +6,6 @@ dev:
 
 bench:
     cargo criterion
+
+doc:
+    cargo doc --open --no-deps
