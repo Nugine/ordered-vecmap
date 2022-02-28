@@ -92,6 +92,7 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
+          components: miri
 
       - run: rustup component add miri
 
