@@ -1,3 +1,4 @@
+use fnv::FnvHashMap;
 use ordered_vecmap::OrderedVecMap;
 
 use std::collections::{BTreeMap, HashMap};
@@ -48,6 +49,18 @@ pub fn get_trivial(c: &mut Criterion) {
                 .collect::<HashMap<_, _>>();
 
             let id = BenchmarkId::new("hashmap", n);
+            group.bench_with_input(id, &input, |b, i| {
+                b.iter(|| black_box(map.get(black_box(i)).unwrap()));
+            });
+        }
+
+        {
+            let map = data
+                .iter()
+                .map(|&x| (x, x.to_string()))
+                .collect::<FnvHashMap<_, _>>();
+
+            let id = BenchmarkId::new("fnvhashmap", n);
             group.bench_with_input(id, &input, |b, i| {
                 b.iter(|| black_box(map.get(black_box(i)).unwrap()));
             });
