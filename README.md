@@ -4,7 +4,7 @@
 [![Documentation]][docs.rs] 
 ![License]
 
-An ordered map based on vectors and binary search.
+Ordered map and set based on vectors and binary search.
 
 [crates.io]: https://crates.io/crates/ordered-vecmap
 [Latest Version]: https://img.shields.io/crates/v/ordered-vecmap.svg

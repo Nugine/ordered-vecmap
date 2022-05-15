@@ -3,18 +3,18 @@ name = "ordered-vecmap"
 version = "0.2.0-dev"
 edition = "2021"
 license = "MIT"
-description = "An ordered map based on vectors and binary search"
+description = "Ordered map and set based on vectors and binary search"
 repository = "https://github.com/Nugine/ordered-vecmap"
 readme = "README.md"
 documentation = "https://docs.rs/ordered-vecmap"
 categories = ["data-structures"]
-keywords = ["ordered", "map"]
+keywords = ["ordered", "map", "set"]
 
-[dev-dependencies]
-criterion = "0.3.5"
-fnv = "1.0.7"
-rand = "0.8.4"
+# [dev-dependencies]
+# criterion = "0.3.5"
+# fnv = "1.0.7"
+# rand = "0.8.4"
 
-[[bench]]
-name = "maps"
-harness = false
+# [[bench]]
+# name = "maps"
+# harness = false
