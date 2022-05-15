@@ -10,6 +10,10 @@ documentation = "https://docs.rs/ordered-vecmap"
 categories = ["data-structures"]
 keywords = ["ordered", "map", "set"]
 
+[dependencies]
+serde = { version = "1.0.137", optional = true, default-features = false, features = ["alloc"] }
+
+
 # [dev-dependencies]
 # criterion = "0.3.5"
 # fnv = "1.0.7"
