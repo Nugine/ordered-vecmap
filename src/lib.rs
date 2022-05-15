@@ -10,3 +10,6 @@ extern crate alloc;
 
 pub mod vecmap;
 pub mod vecset;
+
+pub use self::vecmap::VecMap;
+pub use self::vecset::VecSet;
