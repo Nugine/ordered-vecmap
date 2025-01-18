@@ -17,7 +17,7 @@ where
 pub fn get_trivial(c: &mut Criterion) {
     let mut group = c.benchmark_group("get_trivial");
 
-    let plot_config: _ = PlotConfiguration::default().summary_scale(AxisScale::Logarithmic);
+    let plot_config = PlotConfiguration::default().summary_scale(AxisScale::Logarithmic);
     group.plot_config(plot_config);
 
     for n in [3, 5, 7, 16, 32, 64, 128, 512] {
@@ -58,7 +58,7 @@ pub fn get_trivial(c: &mut Criterion) {
 pub fn get_nontrivial(c: &mut Criterion) {
     let mut group = c.benchmark_group("get_nontrivial");
 
-    let plot_config: _ = PlotConfiguration::default().summary_scale(AxisScale::Logarithmic);
+    let plot_config = PlotConfiguration::default().summary_scale(AxisScale::Logarithmic);
     group.plot_config(plot_config);
 
     for n in [3, 5, 7, 16, 32, 64, 128, 512] {
