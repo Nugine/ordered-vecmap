@@ -23,7 +23,7 @@ pub fn get_trivial(c: &mut Criterion) {
     for n in [3, 5, 7, 16, 32, 64, 128, 512] {
         let data = {
             let mut v: Vec<u64> = vec![0; n];
-            rand::thread_rng().fill(&mut *v);
+            rand::rng().fill(&mut *v);
             v
         };
 
@@ -64,7 +64,7 @@ pub fn get_nontrivial(c: &mut Criterion) {
     for n in [3, 5, 7, 16, 32, 64, 128, 512] {
         let data = {
             let mut v: Vec<u64> = vec![0; n];
-            rand::thread_rng().fill(&mut *v);
+            rand::rng().fill(&mut *v);
             v.into_iter().map(|x| x.to_string()).collect::<Vec<_>>()
         };
 
