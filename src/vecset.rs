@@ -243,7 +243,6 @@ impl<T: Ord> FromIterator<T> for VecSet<T> {
 
 impl<T> Default for VecSet<T> {
     #[inline]
-    #[must_use]
     fn default() -> Self {
         Self::new()
     }

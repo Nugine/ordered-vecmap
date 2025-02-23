@@ -307,7 +307,6 @@ impl<K: Ord, V> FromIterator<(K, V)> for VecMap<K, V> {
 
 impl<K, V> Default for VecMap<K, V> {
     #[inline]
-    #[must_use]
     fn default() -> Self {
         Self::new()
     }
